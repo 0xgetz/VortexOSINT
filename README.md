@@ -9,6 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
 [![100% Free](https://img.shields.io/badge/cost-100%25%20free-success.svg)](#)
+[![Accuracy](https://img.shields.io/badge/accuracy-high-brightgreen.svg)](#-akurasi)
 [![Plugins](https://img.shields.io/badge/plugins-supported-orange.svg)](#-plugin-komunitas)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -32,20 +33,39 @@
 
 | Modul | Kemampuan | Sumber (gratis, tanpa API key) |
 |-------|-----------|-------------------------------|
-| 👤 **username** | Cek keberadaan akun di **40+ platform** secara paralel | Halaman profil publik |
-| 📧 **email** | Validasi sintaks, klasifikasi domain, lookup **Gravatar**, cek **kebocoran data** & **infostealer** | Gravatar, XposedOrNot, HudsonRock |
+| 👤 **username** | Cek akun di **600+ platform** (dataset WhatsMyName) + **verifikasi anti-false-positive** & skor kepercayaan | WhatsMyName, profil publik |
+| 📧 **email** | Validasi sintaks, **MX deliverability**, klasifikasi domain, **Gravatar**, **kebocoran data** & **infostealer** | Gravatar, XposedOrNot, HudsonRock, DNS |
 | 🌐 **domain** | **WHOIS**, record **DNS**, enumerasi **subdomain**, sidik jari HTTP | crt.sh, DNS publik, WHOIS |
-| 📡 **ip** | **Geolokasi**, ASN/ISP, reverse DNS, flag VPN/Proxy/Hosting | ip-api.com |
+| 📡 **ip** | **Geolokasi konsensus 3 provider** + skor kesepakatan, ASN/ISP, reverse DNS, flag VPN/Proxy | ip-api, ipwho.is, ipapi.co |
 | ☎️ **phone** | Validasi, operator, wilayah, zona waktu (offline) | Google libphonenumber |
 | 📷 **image** | Ekstraksi **EXIF**, info kamera, **koordinat GPS** + link peta | Offline (Pillow) |
 
 Plus:
+- 🎯 **Akurasi tinggi** — deteksi tervalidasi, verifikasi false-positive, konsensus multi-sumber ([detail](#-akurasi))
 - 🎨 Output terminal cantik dengan **rich** (otomatis fallback ke teks biasa)
 - 📄 Ekspor laporan ke **JSON**, **HTML**, dan **PDF**
 - 🖥️ **Mode interaktif (TUI)** berbasis menu — tanpa perlu hafal flag
 - 🧩 **Sistem plugin komunitas** — tambah sumber data sendiri tanpa mengubah inti
 - ⚡ Pemindaian **concurrent** (cepat)
 - 🆓 **Tanpa biaya, tanpa API key wajib, sepenuhnya open source**
+
+---
+
+## 🎯 Akurasi
+
+VortexOSINT dirancang untuk **meminimalkan false positive** dan memberi **skor kepercayaan** di setiap hasil:
+
+- **Username** — menggunakan dataset **WhatsMyName** (600+ situs, masing-masing dengan aturan deteksi tervalidasi `e_string`/`e_code`). Setiap kandidat hasil **diverifikasi ulang dengan username kontrol acak**: situs yang juga "cocok" untuk username acak dianggap tidak andal dan dibuang. (Dataset di-cache 7 hari; fallback ke ruleset bawaan saat offline.)
+- **IP** — **konsensus 3 provider** independen. Field yang disepakati mayoritas dilaporkan dengan persentase kesepakatan; koordinat dirata-ratakan antar provider yang sepakat. IP anycast otomatis ditandai kepercayaan rendah.
+- **Email** — **validasi MX** memastikan domain benar-benar bisa menerima email (sinyal deliverability), dikombinasikan dengan Gravatar, breach, dan infostealer.
+- **Phone** — parsing offline via Google libphonenumber (akurasi operator/wilayah tingkat pustaka resmi).
+
+```bash
+# username lebih cepat tapi kurang akurat (lewati verifikasi):
+python vortex.py username johndoe --no-verify
+# pakai ruleset bawaan, bukan WhatsMyName:
+python vortex.py username johndoe --no-wmn
+```
 
 ---
 
@@ -67,16 +87,16 @@ pip install -e .
 ## 🧑‍💻 Penggunaan
 
 ```bash
-# Cari username di 40+ situs
+# Cari username di 600+ situs (verifikasi akurasi otomatis)
 python vortex.py username johndoe
 
-# Investigasi email (Gravatar + kebocoran data + infostealer)
+# Investigasi email (MX + Gravatar + kebocoran data + infostealer)
 python vortex.py email someone@example.com
 
 # Recon domain (WHOIS, DNS, subdomain)
 python vortex.py domain example.com
 
-# Geolokasi IP
+# Geolokasi IP (konsensus 3 provider)
 python vortex.py ip 8.8.8.8
 
 # Profil nomor telepon
@@ -161,10 +181,10 @@ VortexOSINT/
 │   │   ├── interactive.py    # Mode interaktif (TUI)
 │   │   └── plugins.py        # Loader plugin komunitas
 │   ├── modules/
-│   │   ├── username.py       # Enumerasi 40+ situs
-│   │   ├── email.py          # Gravatar + breach + infostealer
+│   │   ├── username.py       # 600+ situs (WhatsMyName) + verifikasi FP
+│   │   ├── email.py          # MX + Gravatar + breach + infostealer
 │   │   ├── domain.py         # WHOIS/DNS/subdomain
-│   │   ├── ip.py             # Geolokasi & jaringan
+│   │   ├── ip.py             # Geolokasi konsensus 3 provider
 │   │   ├── phone.py          # Parsing nomor telepon
 │   │   └── exif.py           # Metadata & GPS gambar
 │   └── plugins/
@@ -186,8 +206,9 @@ VortexOSINT/
 - [x] Mode interaktif (TUI)
 - [x] Plugin sumber data komunitas
 - [x] Ekspor PDF
+- [x] Akurasi tinggi: WhatsMyName + verifikasi false-positive, konsensus IP multi-provider, validasi MX
 
-🎉 **Semua item roadmap awal telah selesai!** Punya ide baru? Buka [issue](https://github.com/0xgetz/VortexOSINT/issues) atau kirim PR.
+🎉 **Semua item roadmap telah selesai!** Punya ide baru? Buka [issue](https://github.com/0xgetz/VortexOSINT/issues) atau kirim PR.
 
 ---
 
