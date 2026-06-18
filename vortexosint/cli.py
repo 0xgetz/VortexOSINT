@@ -6,9 +6,10 @@ import sys
 from datetime import datetime
 
 from . import __version__
-from .core import console, report
+from .core import console, interactive, plugins as plugins_mod, report
 from .modules import domain as domain_mod
 from .modules import email as email_mod
+from .modules import exif as exif_mod
 from .modules import ip as ip_mod
 from .modules import phone as phone_mod
 from .modules import username as username_mod
@@ -25,12 +26,19 @@ BANNER = r"""
 def _export(args, target: str, scan_type: str, data: dict) -> None:
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe = "".join(c if c.isalnum() else "_" for c in target)[:40]
-    if args.json:
-        path = args.json if isinstance(args.json, str) else f"vortex_{scan_type}_{safe}_{stamp}.json"
-        console.success(f"JSON report saved: {report.to_json(data, path)}")
-    if args.html:
-        path = args.html if isinstance(args.html, str) else f"vortex_{scan_type}_{safe}_{stamp}.html"
-        console.success(f"HTML report saved: {report.to_html(target, scan_type, data, path)}")
+
+    def _path(opt, ext):
+        return opt if isinstance(opt, str) else f"vortex_{scan_type}_{safe}_{stamp}.{ext}"
+
+    if getattr(args, "json", None):
+        console.success(f"JSON report saved: {report.to_json(data, _path(args.json, 'json'))}")
+    if getattr(args, "html", None):
+        console.success(f"HTML report saved: {report.to_html(target, scan_type, data, _path(args.html, 'html'))}")
+    if getattr(args, "pdf", None):
+        try:
+            console.success(f"PDF report saved: {report.to_pdf(target, scan_type, data, _path(args.pdf, 'pdf'))}")
+        except Exception as exc:  # noqa: BLE001
+            console.error(str(exc))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -44,29 +52,46 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub = parser.add_subparsers(dest="command", metavar="<command>")
 
-    common_out = argparse.ArgumentParser(add_help=False)
-    common_out.add_argument("--json", nargs="?", const=True, help="Export JSON (optional path)")
-    common_out.add_argument("--html", nargs="?", const=True, help="Export HTML report (optional path)")
-    common_out.add_argument("--timeout", type=int, default=15, help="HTTP timeout seconds (default 15)")
+    out = argparse.ArgumentParser(add_help=False)
+    out.add_argument("--json", nargs="?", const=True, help="Export JSON (optional path)")
+    out.add_argument("--html", nargs="?", const=True, help="Export HTML report (optional path)")
+    out.add_argument("--pdf", nargs="?", const=True, help="Export PDF report (optional path)")
+    out.add_argument("--timeout", type=int, default=15, help="HTTP timeout seconds (default 15)")
 
-    p_user = sub.add_parser("username", parents=[common_out], help="Find a username across 40+ sites")
+    p_user = sub.add_parser("username", parents=[out], help="Find a username across 40+ sites")
     p_user.add_argument("username")
     p_user.add_argument("--workers", type=int, default=25, help="Concurrent workers")
 
-    p_email = sub.add_parser("email", parents=[common_out], help="Investigate an email address")
+    p_email = sub.add_parser("email", parents=[out], help="Investigate an email address")
     p_email.add_argument("email")
 
-    p_domain = sub.add_parser("domain", parents=[common_out], help="Recon a domain")
+    p_domain = sub.add_parser("domain", parents=[out], help="Recon a domain")
     p_domain.add_argument("domain")
     p_domain.add_argument("--no-deep", action="store_true", help="Skip subdomain enumeration")
 
-    p_ip = sub.add_parser("ip", parents=[common_out], help="Geolocate & profile an IP")
+    p_ip = sub.add_parser("ip", parents=[out], help="Geolocate & profile an IP")
     p_ip.add_argument("ip")
 
-    p_phone = sub.add_parser("phone", parents=[common_out], help="Parse & profile a phone number")
+    p_phone = sub.add_parser("phone", parents=[out], help="Parse & profile a phone number")
     p_phone.add_argument("number")
     p_phone.add_argument("--region", help="Default region code, e.g. US, ID, GB")
 
+    p_img = sub.add_parser("image", parents=[out], help="Extract EXIF metadata & GPS from an image")
+    p_img.add_argument("path")
+
+    sub.add_parser("interactive", help="Launch the guided interactive TUI menu")
+    sub.add_parser("plugins", help="List installed community plugins")
+
+    plugin_registry = {}
+    for meta in plugins_mod.discover():
+        pp = sub.add_parser(meta["command"], parents=[out], help=meta["help"])
+        for arg in meta.get("args", []):
+            pp.add_argument(arg["name"], help=arg.get("help", ""))
+        for opt in meta.get("options", []):
+            pp.add_argument(opt["name"], help=opt.get("help", ""), default=opt.get("default"))
+        plugin_registry[meta["command"]] = meta
+
+    parser.set_defaults(_plugins=plugin_registry)
     return parser
 
 
@@ -98,6 +123,23 @@ def main(argv=None) -> int:
         elif args.command == "phone":
             data = phone_mod.investigate(args.number, default_region=args.region)
             _export(args, args.number, "phone", {"phone": data})
+        elif args.command == "image":
+            data = exif_mod.investigate(args.path)
+            _export(args, args.path, "exif", {"image": data})
+        elif args.command == "interactive":
+            return interactive.run()
+        elif args.command == "plugins":
+            plugins_mod.list_plugins()
+        elif args.command in getattr(args, "_plugins", {}):
+            meta = args._plugins[args.command]
+            kwargs = {a["name"].lstrip("-").replace("-", "_"): getattr(args, a["name"].lstrip("-").replace("-", "_"))
+                      for a in meta.get("args", [])}
+            for o in meta.get("options", []):
+                key = o["name"].lstrip("-").replace("-", "_")
+                kwargs[key] = getattr(args, key, o.get("default"))
+            data = meta["run"](**kwargs)
+            target = next(iter(kwargs.values()), args.command)
+            _export(args, str(target), args.command, {args.command: data})
     except KeyboardInterrupt:
         console.warn("Interrupted by user.")
         return 130
