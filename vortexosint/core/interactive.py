@@ -71,7 +71,7 @@ def run() -> int:
         choice = _ask("Select an option", default="0").strip()
 
         if choice == "0":
-            console.info("Goodbye! Stay ethical. \U0001F44B")
+            console.info("Goodbye! Stay ethical. 👋")
             return 0
         try:
             if choice == "1":

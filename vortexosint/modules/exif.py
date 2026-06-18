@@ -96,7 +96,7 @@ def investigate(path: str) -> Dict:
         console.kv_panel("Camera / Capture", interesting)
 
     if gps_data:
-        console.kv_panel("\U0001F4CD GPS Location", gps_data)
+        console.kv_panel("📍 GPS Location", gps_data)
         console.success("GPS coordinates found — location can be mapped!")
     else:
         console.info("No GPS coordinates embedded.")
