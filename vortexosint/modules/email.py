@@ -95,6 +95,23 @@ def _infostealer(email: str, session) -> Dict:
     }
 
 
+def _mx(domain: str) -> Dict:
+    """Validate that the domain can receive mail (MX records) — a strong
+    deliverability/accuracy signal that the address could be real."""
+    try:
+        import dns.resolver  # dnspython
+    except Exception:
+        return {"available": False, "note": "dnspython not installed"}
+    try:
+        resolver = dns.resolver.Resolver()
+        resolver.lifetime = 6.0
+        answers = resolver.resolve(domain, "MX")
+        hosts = sorted(str(r.exchange).rstrip(".") for r in answers)
+        return {"available": True, "has_mx": bool(hosts), "mx_hosts": hosts}
+    except Exception:  # noqa: BLE001
+        return {"available": True, "has_mx": False, "mx_hosts": []}
+
+
 def investigate(email: str, timeout: int = 15) -> Dict:
     console.section(f"Email scan: {email}")
     session = http.build_session(timeout=timeout)
@@ -103,12 +120,15 @@ def investigate(email: str, timeout: int = 15) -> Dict:
     domain = email.split("@")[-1].lower() if "@" in email else ""
     is_free = domain in FREE_PROVIDERS
 
-    console.info("Validating syntax & classifying domain...")
+    console.info("Validating syntax, domain & MX deliverability...")
+    mx = _mx(domain) if domain else {"available": False}
     console.kv_panel("Basics", {
         "Email": email,
         "Valid syntax": valid,
         "Domain": domain,
         "Provider type": "Free/consumer" if is_free else "Custom/corporate",
+        "Domain accepts mail (MX)": mx.get("has_mx"),
+        "MX hosts": ", ".join(mx.get("mx_hosts", [])[:3]) if mx.get("mx_hosts") else None,
     })
 
     console.info("Checking Gravatar profile...")
@@ -147,6 +167,7 @@ def investigate(email: str, timeout: int = 15) -> Dict:
         "valid_syntax": valid,
         "domain": domain,
         "provider_type": "free" if is_free else "custom",
+        "mx": mx,
         "gravatar": grav,
         "breaches": breach,
         "infostealer": stealer,

@@ -1,6 +1,6 @@
 """VortexOSINT — modern, complete, 100% free OSINT toolkit."""
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "VortexOSINT contributors"
 __license__ = "MIT"
 

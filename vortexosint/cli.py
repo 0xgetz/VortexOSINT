@@ -58,9 +58,11 @@ def build_parser() -> argparse.ArgumentParser:
     out.add_argument("--pdf", nargs="?", const=True, help="Export PDF report (optional path)")
     out.add_argument("--timeout", type=int, default=15, help="HTTP timeout seconds (default 15)")
 
-    p_user = sub.add_parser("username", parents=[out], help="Find a username across 40+ sites")
+    p_user = sub.add_parser("username", parents=[out], help="Find a username across 600+ sites (WhatsMyName)")
     p_user.add_argument("username")
     p_user.add_argument("--workers", type=int, default=25, help="Concurrent workers")
+    p_user.add_argument("--no-wmn", action="store_true", help="Use built-in ruleset instead of WhatsMyName")
+    p_user.add_argument("--no-verify", action="store_true", help="Skip false-positive control pass (faster, less accurate)")
 
     p_email = sub.add_parser("email", parents=[out], help="Investigate an email address")
     p_email.add_argument("email")
@@ -69,7 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_domain.add_argument("domain")
     p_domain.add_argument("--no-deep", action="store_true", help="Skip subdomain enumeration")
 
-    p_ip = sub.add_parser("ip", parents=[out], help="Geolocate & profile an IP")
+    p_ip = sub.add_parser("ip", parents=[out], help="Geolocate & profile an IP (multi-provider consensus)")
     p_ip.add_argument("ip")
 
     p_phone = sub.add_parser("phone", parents=[out], help="Parse & profile a phone number")
@@ -82,6 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("interactive", help="Launch the guided interactive TUI menu")
     sub.add_parser("plugins", help="List installed community plugins")
 
+    # Dynamically register community plugin subcommands.
     plugin_registry = {}
     for meta in plugins_mod.discover():
         pp = sub.add_parser(meta["command"], parents=[out], help=meta["help"])
@@ -109,7 +112,8 @@ def main(argv=None) -> int:
 
     try:
         if args.command == "username":
-            data = username_mod.search(args.username, timeout=args.timeout, max_workers=args.workers)
+            data = username_mod.search(args.username, timeout=args.timeout, max_workers=args.workers,
+                                       use_wmn=not args.no_wmn, verify=not args.no_verify)
             _export(args, args.username, "username", {"username_search": data})
         elif args.command == "email":
             data = email_mod.investigate(args.email, timeout=args.timeout)
