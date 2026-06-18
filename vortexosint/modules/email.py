@@ -64,6 +64,37 @@ def _breaches(email: str, session) -> Dict:
         return {"available": False, "breaches": []}
 
 
+def _infostealer(email: str, session) -> Dict:
+    """Check infostealer/credential exposure via the free, keyless
+    HudsonRock Cavalier OSINT API."""
+    url = ("https://cavalier.hudsonrock.com/api/json/v2/osint-tools/"
+           f"search-by-email?email={email}")
+    resp = http.get(session, url)
+    if resp is None or resp.status_code != 200:
+        return {"available": False}
+    try:
+        data = resp.json()
+    except Exception:  # noqa: BLE001
+        return {"available": False}
+    stealers = data.get("stealers", []) or []
+    return {
+        "available": True,
+        "compromised": bool(stealers),
+        "message": data.get("message"),
+        "infections": len(stealers),
+        "details": [
+            {
+                "date": s.get("date_compromised"),
+                "computer": s.get("computer_name"),
+                "os": s.get("operating_system"),
+                "malware": s.get("malware_path"),
+                "antiviruses": s.get("antiviruses"),
+            }
+            for s in stealers[:10]
+        ],
+    }
+
+
 def investigate(email: str, timeout: int = 15) -> Dict:
     console.section(f"Email scan: {email}")
     session = http.build_session(timeout=timeout)
@@ -99,6 +130,18 @@ def investigate(email: str, timeout: int = 15) -> Dict:
     else:
         console.success("No known breaches found in the public dataset.")
 
+    console.info("Checking infostealer exposure (HudsonRock)...")
+    stealer = _infostealer(email, session)
+    if stealer.get("compromised"):
+        console.error(f"Found in {stealer['infections']} infostealer infection(s)!")
+        console.results_table(
+            "Infostealer infections",
+            ["Date", "Computer", "OS"],
+            [[d.get("date"), d.get("computer"), d.get("os")] for d in stealer.get("details", [])],
+        )
+    elif stealer.get("available"):
+        console.success("Not found in any known infostealer infections.")
+
     return {
         "email": email,
         "valid_syntax": valid,
@@ -106,4 +149,5 @@ def investigate(email: str, timeout: int = 15) -> Dict:
         "provider_type": "free" if is_free else "custom",
         "gravatar": grav,
         "breaches": breach,
+        "infostealer": stealer,
     }
