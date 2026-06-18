@@ -16,6 +16,18 @@
 
 ---
 
+## 🎬 Demo
+
+<div align="center">
+
+![VortexOSINT demo](assets/demo.gif)
+
+*Pemindaian nomor telepon & ekstraksi EXIF/GPS gambar dengan ekspor PDF — langsung dari terminal.*
+
+</div>
+
+---
+
 ## ✨ Fitur
 
 | Modul | Kemampuan | Sumber (gratis, tanpa API key) |
@@ -158,7 +170,8 @@ VortexOSINT/
 │   └── plugins/
 │       └── example_macvendor.py  # Plugin contoh
 ├── assets/
-│   └── logo.jpeg             # Logo dark cyberpunk
+│   ├── logo.jpeg             # Logo dark cyberpunk
+│   └── demo.gif             # Animasi demo terminal
 ├── requirements.txt
 ├── setup.py
 └── README.md
