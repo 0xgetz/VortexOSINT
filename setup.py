@@ -19,6 +19,8 @@ setup(
         "dnspython>=2.6.0",
         "python-whois>=0.9.4",
         "phonenumbers>=8.13.0",
+        "Pillow>=10.0.0",
+        "reportlab>=4.0.0",
     ],
     entry_points={"console_scripts": ["vortex=vortexosint.cli:main"]},
     classifiers=[
