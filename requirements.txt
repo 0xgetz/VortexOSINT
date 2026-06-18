@@ -1,0 +1,5 @@
+requests>=2.31.0
+rich>=13.7.0
+dnspython>=2.6.0
+python-whois>=0.9.4
+phonenumbers>=8.13.0

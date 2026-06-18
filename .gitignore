@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# VortexOSINT reports
+vortex_*.json
+vortex_*.html
+vortex_*.csv
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.log
