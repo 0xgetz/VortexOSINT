@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/logo.jpeg" alt="VortexOSINT — dark cyberpunk OSINT toolkit" width="100%">
+
 # 🔍 VortexOSINT
 
 **Toolkit OSINT modern, lengkap & 100% gratis** — investigasi *username*, *email*, *domain*, *IP*, *nomor telepon*, dan *metadata gambar* dari sumber publik tanpa API key berbayar.
@@ -155,6 +157,8 @@ VortexOSINT/
 │   │   └── exif.py           # Metadata & GPS gambar
 │   └── plugins/
 │       └── example_macvendor.py  # Plugin contoh
+├── assets/
+│   └── logo.jpeg             # Logo dark cyberpunk
 ├── requirements.txt
 ├── setup.py
 └── README.md
